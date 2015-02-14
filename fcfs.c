@@ -11,7 +11,6 @@
 #include <string.h>
 #include <ctype.h>
 #include <assert.h>
-#include <stdbool.h>
 #include "helper.h"
 
 // some useful global variables
@@ -29,24 +28,27 @@ int sumTurnarounds = 0;
 Process *CPUS[NUMBER_OF_PROCESSORS];
 
 /* things i need:
+- read in the data file and populate queue
 - initialize ready and waiting queue function
 - implementation for next scheduled process function (dequeues next schedules process from ready queue)
 - implmentation for function for enqueuing new processes in ready queue
 - implmentationfunction for moving waiting processes to ready after i/o burst done
 - implmentation function for moving ready process into running state
 - implmentation function for moving from running to waiting
+- functions to updates states (waiting, ready, running)
 - more error handling 
 */
 void error(char *message){
 	fprintf(stderr, "%s\n", message);
 	exit(-1);
 }
+
 float averageWaitTime(int theWait){
 	float result = 0.0;
 	result = theWait / (double) numberOfProcesses;
 	return result;
-
 }
+
 float averageTurnaroundTime(int theTurnaround){
 	float result = 0.0;
 	result = theTurnaround / (double) numberOfProcesses;
@@ -57,7 +59,6 @@ float averageUtilizationTime(int theUtilization){
  	float result = 0.0;
  	result = 100.0 * theUtilization / simulationTime;
  	return result;
-
  }
 // sort arrival times to get the next arrival time
 int compareArrivalTime(const void *a, const void *b){
@@ -66,23 +67,16 @@ int compareArrivalTime(const void *a, const void *b){
 	return (second->arrivalTime - first->arrivalTime);
 }
 
-bool isCPUFree(void){
-	// returns if cpu is free or not for next process
+// returns if cpu is free or not for next process, also keeps track of total number of running proceeses (for cpu utilization calculation later)
+int runningProcesses(void){
 	int runningProcesses = 0;
-	bool isFree = false;
 	int i;
 	for (i = 0; i < NUMBER_OF_PROCESSORS; i++){
 		if (CPUS[i] != NULL){
 			runningProcesses++;
 		}
 	}
-	if (runningProcesses == NUMBER_OF_PROCESSORS){
-		return isFree;
-	}
-	else{
-		isFree = true;
-	}
-	return isFree;
+	return runningProcesses;
 }
 
 Process *nextScheduledProcess(void){
@@ -91,8 +85,13 @@ Process *nextScheduledProcess(void){
 	return NULL;
 }
 
-void newIncomingProcess(void){
+void addNewIncomingProcess(void){
 	// place incoming processes into end of ready queue
+}
+
+// checks to see how many more processes are left to process
+int totalIncomingProcesses(void){
+	return numberOfProcesses - nextProcess;
 }
 
  void waitingToReady(void){
@@ -100,7 +99,7 @@ void newIncomingProcess(void){
  }
 
  void readyToRunning(void){
- 	// move from ready to running once cpu is free
+ 	// move from ready to running once cpu is free by calling nextScheduledProcess
  }
  void runningToWaiting(void){
  	// move from running to waiting while i/o burst is happening
@@ -124,11 +123,27 @@ int main(){
 	}
 	// also initialize both ready and waiting queue before doing anything - do this with two methods
 	
+	// main execution loop
+	while (1){
+		addNewIncomingProcess();
+		runningToWaiting();
+		waitingToReady();
+		readyToRunning();
+
+		/* break out of loop once there are no processes left running and no processes left to process
+		 also check for if the waiting queue size is 0*/
+		if (runningProcesses() == 0 && totalIncomingProcesses() == 0){
+			break;
+		}
+		simulationTime++;
+	}
+
 	// calculations
 	for(i = 0; i < numberOfProcesses; i++){
 		sumTurnarounds +=processes[i].endTime - processes[i].arrivalTime;
 		totalWaitingTime += processes[i].waitingTime;
 	}
+	cpuTimeUtilized += runningProcesses();
 	wt = averageWaitTime(totalWaitingTime);
 	tat = averageTurnaroundTime(sumTurnarounds);
 	ut = averageWaitTime(cpuTimeUtilized);
