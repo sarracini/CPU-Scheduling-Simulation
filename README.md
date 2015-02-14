@@ -12,7 +12,7 @@ Program will calculate and answer all the following questions for each of the ab
 
 3. When does the CPU finish all these processes? What is average CPU utilization by this time point?  (At any time instance, CPU utilization is 400% if all 4 CPUs are running, 300% if only 3 CPUs are running, 200% for 2 CPUs, 100% for only 1 CPU, 0% if no CPU is running.)
 
-4. How many context switches occur in total during the execution? (How to count context switch for this question: you should count as context switch only for those cases where a process is preempted during its CPU bursts, not for those cases where a process terminates or just finishes its current CPU bursts and goes to I/O.)
+4. How many context switches occur in total during the execution? 
 
 5. Which process is the last one to finish?
 
