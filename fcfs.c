@@ -20,7 +20,7 @@ int nextProcess = 0;
 int totalWaitingTime = 0;
 int totalContextSwitches = 0;
 int cpuTimeUtilized = 0;
-int simulationTime = 0;
+int theClock = 0;
 int sumTurnarounds = 0;
 
 Process_queue readyQueue;
@@ -28,8 +28,10 @@ Process_queue waitingQueue;
 
 Process *CPUS[NUMBER_OF_PROCESSORS];
 
+Process *tmpQueue[MAX_PROCESSES+1];
+int tmpQueueSize;
+
 /* to do:
-- implementation for next scheduled process function (dequeues next schedules process from ready queue)
 - implmentation for function for enqueuing new processes in ready queue
 - implmentation for function for moving waiting processes to ready after i/o burst done
 - implmentation for function for moving ready process into running state
@@ -37,10 +39,6 @@ Process *CPUS[NUMBER_OF_PROCESSORS];
 - functions to updates states (waiting, ready, running)
 - clean up code and add comments
 */
-void error(char *message){
-	fprintf(stderr, "%s\n", message);
-	exit(-1);
-}
 
 Process_node *createProcessNode(Process *p){
 	Process_node *node = (Process_node*)malloc(sizeof(Process_node));
@@ -50,6 +48,17 @@ Process_node *createProcessNode(Process *p){
 	node->data = p;
 	node->next = NULL;
 	return node;
+}
+
+void resetVariables(void){
+	numberOfProcesses = 0;
+	nextProcess = 0;
+	totalWaitingTime = 0;
+	totalContextSwitches = 0;
+	cpuTimeUtilized = 0;
+	theClock = 0;
+	sumTurnarounds = 0;
+	tmpQueueSize = 0;
 }
 
 void initializeProcessQueue(Process_queue *q){
@@ -86,23 +95,24 @@ void dequeueProcess(Process_queue *q) {
 }
 
 float averageWaitTime(int theWait){
-	float result = 0.0;
-	result = theWait / (double) numberOfProcesses;
+	float result = theWait / (double) numberOfProcesses;
 	return result;
 }
 
 float averageTurnaroundTime(int theTurnaround){
-	float result = 0.0;
-	result = theTurnaround / (double) numberOfProcesses;
+	float result = theTurnaround / (double) numberOfProcesses;
 	return result;
 }
  
 float averageUtilizationTime(int theUtilization){
- 	float result = 0.0;
- 	result = 100.0 * theUtilization / simulationTime;
+ 	float result = (theUtilization / theClock) * 100.0;
  	return result;
  }
-// sort arrival times to get the next arrival time
+
+int totalIncomingProcesses(void){
+	return numberOfProcesses - nextProcess;
+}
+
 int compareArrivalTime(const void *a, const void *b){
 	Process *first = (Process *) a;
 	Process *second = (Process *) b;
@@ -115,7 +125,18 @@ int compareArrivalTime(const void *a, const void *b){
 	return 0;
 }
 
-// returns if cpu is free or not for next process, also keeps track of total number of running proceeses (for cpu utilization calculation later)
+int compareProcessIds(const void *a, const void *b){
+	Process *first = *((Process **) a);
+	Process *second = *((Process **) b);
+	if (first->pid < second->pid){
+		return -1;
+	}
+	if (first->pid > second->pid){
+		return 1;
+	}
+	return 0;
+}
+
 int runningProcesses(void){
 	int runningProcesses = 0;
 	int i;
@@ -128,52 +149,68 @@ int runningProcesses(void){
 }
 
 Process *nextScheduledProcess(void){
-	//if ready queue == 0 return null bc there is nothing to process
-	//else take the next process in the queue and dequeue that process from the ready queue
-	return NULL;
+	if (readyQueue.size == 0){
+		return NULL;
+	}
+	else{
+		Process *grabNext = readyQueue.front->data;
+		dequeueProcess(&readyQueue);
+		return grabNext;
+	}
 }
 
 void addNewIncomingProcess(void){
 	// place incoming processes into end of ready queue
 }
 
-// checks to see how many more processes are left to process
-int totalIncomingProcesses(void){
-	return numberOfProcesses - nextProcess;
-}
-
- void waitingToReady(void){
+void waitingToReady(void){
  	// after they're done their i/o burst move them to ready
  }
 
- void readyToRunning(void){
+void readyToRunning(void){
  	// move from ready to running once cpu is free by calling nextScheduledProcess
  }
- void runningToWaiting(void){
+
+void runningToWaiting(void){
  	// move from running to waiting while i/o burst is happening
  }
 
-void displayResults(float awt, float atat, int sim, float aut, int cs){
+void updateReadyState(void){
+ 	// updating processes in ready state
+ }
+
+void updateWaitingState(void){
+ 	// updating processes in waiting state
+ }
+
+void updateRunningState(void){
+ 	// updating processes in running state
+ }
+
+void displayResults(float awt, float atat, int sim, float aut, int cs, int pids){
 	printf( "Average waiting time:   %.2f units\n"
-			"Average turnaround time:   %.2f units\n"
-			"Time CPU finished all processes:   %d\n"
-			"Average CPU utilization:   %.2f units\n"
-			"Number of context Switces:   %d\n", 
-			awt, atat, sim, aut, cs);
+		"Average turnaround time:   %.2f units\n"
+		"Time CPU finished all processes:   %d\n"
+		"Average CPU utilization:   %.2f units\n"
+		"Number of context Switces:   %d\n" 
+		"PID(s) of last process(es) to finish:   %d\n", awt, atat, sim, aut, cs, pids);
 }
 
 int main(){
 	int i;
 	int status = 0;
 	float ut, wt, tat;
+	int lastPID;
 	
 	// clear CPU'S, and initialize queues
 	for (i = 0; i < NUMBER_OF_PROCESSORS; i++){
 		CPUS[i] = NULL;
 	}
+	resetVariables();
 	initializeProcessQueue(&readyQueue);
 	initializeProcessQueue(&waitingQueue);
 
+	// read in workload and store processes
 	while(status = readProcess(&processes[numberOfProcesses])){
 		if (status == 1){
 			numberOfProcesses++;
@@ -189,22 +226,33 @@ int main(){
 		waitingToReady();
 		readyToRunning();
 
+		updateWaitingState();
+		updateReadyState();
+		updateRunningState();
+
 		if (runningProcesses() == 0 && totalIncomingProcesses() == 0 && waitingQueue.size == 0){
 			break;
 		}
-		simulationTime++;
+		theClock++;
+		cpuTimeUtilized += runningProcesses();
+
 	}
 
 	// calculations
 	for(i = 0; i < numberOfProcesses; i++){
 		sumTurnarounds +=processes[i].endTime - processes[i].arrivalTime;
 		totalWaitingTime += processes[i].waitingTime;
+
+		if (processes[i].endTime == theClock){
+			lastPID = processes[i].pid;
+		}
 	}
-	cpuTimeUtilized += runningProcesses();
+
 	wt = averageWaitTime(totalWaitingTime);
 	tat = averageTurnaroundTime(sumTurnarounds);
 	ut = averageWaitTime(cpuTimeUtilized);
 	
-	displayResults(wt, tat, simulationTime, ut, totalContextSwitches);
+	displayResults(wt, tat, theClock, ut, totalContextSwitches, lastPID);
+	
 	return 0;
 }

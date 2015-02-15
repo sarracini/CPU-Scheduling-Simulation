@@ -58,7 +58,11 @@ int totalIncomingProcesses(void);
 void waitingToReady(void);
 void readyToRunning(void);
 void runningToWaiting(void);
-void displayResults(float awt, float atat, int sim, float aut, int cs);
+void displayResults(float awt, float atat, int sim, float aut, int cs, int pid);
+void resetVariables(void);
+void updateReadyState(void);
+void updateWaitingState(void);
+void updateRunningState(void);
 
 /* Queue management functions */
 Process_node *createProcessNode(Process *);
