@@ -23,24 +23,66 @@ int cpuTimeUtilized = 0;
 int simulationTime = 0;
 int sumTurnarounds = 0;
 
-//process_queue readyQueue;
-//process_queue waitingQueue;
+Process_queue readyQueue;
+Process_queue waitingQueue;
+
 Process *CPUS[NUMBER_OF_PROCESSORS];
 
-/* things i need:
-- read in the data file and populate queue
-- initialize ready and waiting queue function
+/* to do:
 - implementation for next scheduled process function (dequeues next schedules process from ready queue)
 - implmentation for function for enqueuing new processes in ready queue
-- implmentationfunction for moving waiting processes to ready after i/o burst done
-- implmentation function for moving ready process into running state
-- implmentation function for moving from running to waiting
+- implmentation for function for moving waiting processes to ready after i/o burst done
+- implmentation for function for moving ready process into running state
+- implmentation for function for moving from running to waiting
 - functions to updates states (waiting, ready, running)
-- more error handling 
+- clean up code and add comments
 */
 void error(char *message){
 	fprintf(stderr, "%s\n", message);
 	exit(-1);
+}
+
+Process_node *createProcessNode(Process *p){
+	Process_node *node = (Process_node*)malloc(sizeof(Process_node));
+	if (node == NULL){
+		error("out of memory");
+	}
+	node->data = p;
+	node->next = NULL;
+	return node;
+}
+
+void initializeProcessQueue(Process_queue *q){
+	q->front = q->back = NULL;
+	q->size = 0;
+}
+
+void enqueueProcess(Process_queue *q, Process *p){
+	Process_node *node = createProcessNode(p);
+	if (q->front == NULL){
+		assert(q->back == NULL);
+		q->front = q->back = node;
+	}
+	else{
+		assert(q->back != NULL);
+		q->back->next = node;
+		q->back = node;
+	}
+	q->size++;
+}
+
+void dequeueProcess(Process_queue *q) {
+    Process_node *deleted = q->front;
+    assert(q->size > 0);
+    if (q->size == 1) {
+        q->front = NULL;
+        q->back = NULL;
+    } else {
+        assert(q->front->next != NULL);
+        q->front = q->front->next;
+    }
+    free(deleted);
+    q->size--;  
 }
 
 float averageWaitTime(int theWait){
@@ -64,7 +106,13 @@ float averageUtilizationTime(int theUtilization){
 int compareArrivalTime(const void *a, const void *b){
 	Process *first = (Process *) a;
 	Process *second = (Process *) b;
-	return (second->arrivalTime - first->arrivalTime);
+	if (first->arrivalTime < second->arrivalTime){
+		return -1;
+	}
+	if (first->arrivalTime > second->arrivalTime){
+		return 1;
+	}
+	return 0;
 }
 
 // returns if cpu is free or not for next process, also keeps track of total number of running proceeses (for cpu utilization calculation later)
@@ -116,12 +164,23 @@ void displayResults(float awt, float atat, int sim, float aut, int cs){
 
 int main(){
 	int i;
+	int status = 0;
 	float ut, wt, tat;
-	// clear CPU'S in order to initialize them
+	
+	// clear CPU'S, and initialize queues
 	for (i = 0; i < NUMBER_OF_PROCESSORS; i++){
 		CPUS[i] = NULL;
 	}
-	// also initialize both ready and waiting queue before doing anything - do this with two methods
+	initializeProcessQueue(&readyQueue);
+	initializeProcessQueue(&waitingQueue);
+
+	while(status = readProcess(&processes[numberOfProcesses])){
+		if (status == 1){
+			numberOfProcesses++;
+		}
+	}
+
+	qsort(processes, numberOfProcesses, sizeof(Process), compareArrivalTime);
 	
 	// main execution loop
 	while (1){
@@ -130,9 +189,7 @@ int main(){
 		waitingToReady();
 		readyToRunning();
 
-		/* break out of loop once there are no processes left running and no processes left to process
-		 also check for if the waiting queue size is 0*/
-		if (runningProcesses() == 0 && totalIncomingProcesses() == 0){
+		if (runningProcesses() == 0 && totalIncomingProcesses() == 0 && waitingQueue.size == 0){
 			break;
 		}
 		simulationTime++;
@@ -147,6 +204,7 @@ int main(){
 	wt = averageWaitTime(totalWaitingTime);
 	tat = averageTurnaroundTime(sumTurnarounds);
 	ut = averageWaitTime(cpuTimeUtilized);
+	
 	displayResults(wt, tat, simulationTime, ut, totalContextSwitches);
 	return 0;
 }

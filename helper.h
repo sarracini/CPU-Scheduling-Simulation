@@ -1,8 +1,13 @@
+#define printable(a) (((a) >= 32 && (a) <= 126) || (a) == '\t' || (a) == '\n')
+
 #define MAX_PROCESSES 100
 #define MAX_BURSTS 1000
 #define MAX_TOKEN_LENGTH 30
 #define MAX_LINE_LENGTH (1<<16)
 #define NUMBER_OF_PROCESSORS 4
+
+#define COMMENT_CHAR '#'
+#define COMMENT_LINE -1
 
 typedef struct burst{
 	int length;
@@ -23,7 +28,25 @@ typedef struct process{
 	int currentQueue;
 } Process;
 
+typedef struct process_node{
+	struct process *data;
+	struct process_node *next;
+} Process_node;
+
+typedef struct process_queue{
+	int size;
+	struct process_node *front;
+	struct process_node *back;
+} Process_queue;
+
+/* Error management functions */
 void error(char *);
+void error_malformed_input_line(char *);
+void error_too_many_bursts(int);
+void error_duplicate_pid(int pid);
+void error_bad_quantum(void);
+
+/* Scheduling functions */
 float averageWaitTime(int theWait);
 float averageTurnaroundTime(int theTurnaround);
 float averageUtilizationTime(int theUtilization);
@@ -36,3 +59,17 @@ void waitingToReady(void);
 void readyToRunning(void);
 void runningToWaiting(void);
 void displayResults(float awt, float atat, int sim, float aut, int cs);
+
+/* Queue management functions */
+Process_node *createProcessNode(Process *);
+void initializeProcessQueue(Process_queue *);
+void enqueueProcess(Process_queue *, Process *);
+void dequeueProcess(Process_queue *);
+
+/* Input/Output functions */
+char *readLine(void);
+char *readLineHelper(char *, int);
+int readInt(char **);
+int readBracedInt(char **);
+int empty(char *);
+int readProcess(Process *);
