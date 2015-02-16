@@ -21,7 +21,7 @@ Program will calculate and answer all the following questions for each of the ab
 Compile with:
 
 ``` sh
-$ gcc fcfs.c
+$ gcc fcfs.c input_output.c
 ```
 
 ## Notes
