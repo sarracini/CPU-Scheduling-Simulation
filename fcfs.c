@@ -250,7 +250,7 @@ int main(){
 
 	wt = averageWaitTime(totalWaitingTime);
 	tat = averageTurnaroundTime(sumTurnarounds);
-	ut = averageWaitTime(cpuTimeUtilized);
+	ut = averageUtilizationTime(cpuTimeUtilized);
 	
 	displayResults(wt, tat, theClock, ut, totalContextSwitches, lastPID);
 	
