@@ -33,7 +33,6 @@ int tmpQueueSize;
 
 /* to do:
 - implmentation for function for enqueuing new processes in ready queue
-- implmentation for function for moving waiting processes to ready after i/o burst done
 - implmentation for function for moving ready process into running state
 - implmentation for function for moving from running to waiting
 - functions to updates states (waiting, ready, running)
@@ -164,11 +163,30 @@ void addNewIncomingProcess(void){
 }
 
 void waitingToReady(void){
- 	// after they're done their i/o burst move them to ready
+ 	int i;
+ 	for(i = 0; i < waitingQueue.size; i++){
+ 		process *grabNext = waitingQueue.front->data;
+ 		dequeueProcess(&waitingQueue);
+ 		if(grabNext->burst[grabNext->currentBurst].step == grabNext->burst[grabNext->currentBurst].length){
+ 			grabNext->currentBurst++;
+ 			tmpQueue[tmpQueueSize++] = grabNext;
+ 		}
+ 		else{
+ 			enqueueProcess(&waitingQueue, grabNext);
+ 		}
+ 	}
  }
 
 void readyToRunning(void){
- 	// move from ready to running once cpu is free by calling nextScheduledProcess
+ 	int i;
+ 	
+ 	// also enqueue all processes from tmp queue to ready and reset tmp queue size to 0
+
+ 	for (i = 0; i < NUMBER_OF_PROCESSORS; i++){
+ 		if (CPUS[i] == NULL){
+ 			CPUS[i] = nextScheduledProcess();
+ 		}
+ 	}
  }
 
 void runningToWaiting(void){
@@ -211,7 +229,7 @@ int main(){
 	initializeProcessQueue(&waitingQueue);
 
 	// read in workload and store processes
-	while(status = readProcess(&processes[numberOfProcesses])){
+	while( (status = (readProcess(&processes[numberOfProcesses]))) ){
 		if (status == 1){
 			numberOfProcesses++;
 		}
