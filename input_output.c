@@ -173,6 +173,10 @@ int readProcess(Process *dest) {
 }
 /** Error management functions **/
 
+void error(char *message){
+    fprintf(stderr, "%s\n", message);
+    exit(-1);
+}
 /* print error message displaying the first errant line in the input,
    or a special message in the presence of unprintable characters,
    and terminate abnormally. */
