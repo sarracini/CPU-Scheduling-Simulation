@@ -33,8 +33,6 @@ int tmpQueueSize;
 
 /* to do:
 - implmentation for function for enqueuing new processes in ready queue
-- implmentation for function for moving ready process into running state
-- implmentation for function for moving from running to waiting
 - functions to updates states (waiting, ready, running)
 - clean up code and add comments
 */
@@ -165,9 +163,9 @@ void addNewIncomingProcess(void){
 void waitingToReady(void){
  	int i;
  	for(i = 0; i < waitingQueue.size; i++){
- 		process *grabNext = waitingQueue.front->data;
+ 		Process *grabNext = waitingQueue.front->data;
  		dequeueProcess(&waitingQueue);
- 		if(grabNext->burst[grabNext->currentBurst].step == grabNext->burst[grabNext->currentBurst].length){
+ 		if(grabNext->bursts[grabNext->currentBurst].step == grabNext->bursts[grabNext->currentBurst].length){
  			grabNext->currentBurst++;
  			tmpQueue[tmpQueueSize++] = grabNext;
  		}
@@ -179,9 +177,11 @@ void waitingToReady(void){
 
 void readyToRunning(void){
  	int i;
- 	
- 	// also enqueue all processes from tmp queue to ready and reset tmp queue size to 0
-
+ 	qsort(tmpQueue, tmpQueueSize, sizeof(Process*), compareProcessIds);
+ 	for (i = 0; i < tmpQueueSize; i++){
+ 		enqueueProcess(&readyQueue, tmpQueue[i]);
+ 	}
+	tmpQueueSize = 0;
  	for (i = 0; i < NUMBER_OF_PROCESSORS; i++){
  		if (CPUS[i] == NULL){
  			CPUS[i] = nextScheduledProcess();
@@ -190,7 +190,21 @@ void readyToRunning(void){
  }
 
 void runningToWaiting(void){
- 	// move from running to waiting while i/o burst is happening
+ 	int i;
+ 	for (i = 0; i < NUMBER_OF_PROCESSORS; i++){
+ 		if (CPUS[i] != NULL){
+ 			if (CPUS[i]->bursts[CPUS[i]->currentBurst].step == CPUS[i]->bursts[CPUS[i]->currentBurst].length){
+ 				CPUS[i]->currentBurst++;
+ 				if (CPUS[i]->currentBurst < CPUS[i]->numOfBursts){
+ 					enqueueProcess(&waitingQueue, CPUS[i]);
+ 				}
+ 				else{
+ 					CPUS[i]->endTime = theClock;
+ 				}
+ 				CPUS[i] = NULL;
+ 			}
+ 		}	
+ 	}
  }
 
 void updateReadyState(void){
