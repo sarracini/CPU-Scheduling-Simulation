@@ -45,6 +45,7 @@ void error_malformed_input_line(char *);
 void error_too_many_bursts(int);
 void error_duplicate_pid(int pid);
 void error_bad_quantum(void);
+void error_invalid_number_of_processes(int numberOfProcesses);
 
 /* Scheduling functions */
 float averageWaitTime(int theWait);
@@ -60,9 +61,6 @@ void readyToRunning(void);
 void runningToWaiting(void);
 void displayResults(float awt, float atat, int sim, float aut, int cs, int pid);
 void resetVariables(void);
-void updateReadyState(void);
-void updateWaitingState(void);
-void updateRunningState(void);
 
 /* Queue management functions */
 Process_node *createProcessNode(Process *);

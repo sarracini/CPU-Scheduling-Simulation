@@ -208,6 +208,19 @@ void error_too_many_bursts(int pid) {
                     pid, MAX_BURSTS/2, MAX_BURSTS);
     exit(-1);
 }
+/* print appropriate error for the case wherein there are too many processes,
+    or none at all. */
+void error_invalid_number_of_processes(int numberOfProcesses) {
+    if (numberOfProcesses == 0) {
+        fprintf(stderr, "Error: no processes specified in input.\n");
+        exit(-1);
+    } 
+    else if (numberOfProcesses > MAX_PROCESSES) {
+        fprintf(stderr, "Error: too many processes specified in input; "
+                        "they cannot number more than %d.\n", MAX_PROCESSES);
+        exit(-1);
+    }
+}
 
 /* print appropriate error for the case wherein a process id appears more than
    once in the input, then abnormally terminate. */

@@ -32,8 +32,6 @@ Process *tmpQueue[MAX_PROCESSES+1];
 int tmpQueueSize;
 
 /* to do:
-- implmentation for function for enqueuing new processes in ready queue
-- functions to updates states (waiting, ready, running)
 - clean up code and add comments
 */
 
@@ -125,11 +123,16 @@ int compareArrivalTime(const void *a, const void *b){
 int compareProcessIds(const void *a, const void *b){
 	Process *first = *((Process **) a);
 	Process *second = *((Process **) b);
-	if (first->pid < second->pid){
-		return -1;
+	if (first->pid != second->pid){
+		if (first->pid < second->pid){
+			return -1;
+		}
+		if (first->pid > second->pid){
+			return 1;
+		}
 	}
-	if (first->pid > second->pid){
-		return 1;
+	else{
+		error_duplicate_pid(first->pid);
 	}
 	return 0;
 }
@@ -152,12 +155,15 @@ Process *nextScheduledProcess(void){
 	else{
 		Process *grabNext = readyQueue.front->data;
 		dequeueProcess(&readyQueue);
+		grabNext->waitingTime++;
 		return grabNext;
 	}
 }
 
 void addNewIncomingProcess(void){
-	// place incoming processes into end of ready queue
+	while(nextProcess < numberOfProcesses && processes[nextProcess].arrivalTime <= theClock){
+		tmpQueue[tmpQueueSize++] = &processes[nextProcess++];
+	}
 }
 
 void waitingToReady(void){
@@ -172,6 +178,7 @@ void waitingToReady(void){
  		else{
  			enqueueProcess(&waitingQueue, grabNext);
  		}
+ 		grabNext->bursts[grabNext->currentBurst].step++;
  	}
  }
 
@@ -203,20 +210,9 @@ void runningToWaiting(void){
  				}
  				CPUS[i] = NULL;
  			}
+ 			CPUS[i]->bursts[CPUS[i]->currentBurst].step++;
  		}	
  	}
- }
-
-void updateReadyState(void){
- 	// updating processes in ready state
- }
-
-void updateWaitingState(void){
- 	// updating processes in waiting state
- }
-
-void updateRunningState(void){
- 	// updating processes in running state
  }
 
 void displayResults(float awt, float atat, int sim, float aut, int cs, int pids){
@@ -247,6 +243,9 @@ int main(){
 		if (status == 1){
 			numberOfProcesses++;
 		}
+		if (numberOfProcesses > MAX_PROCESSES || numberOfProcesses == 0){
+			error_invalid_number_of_processes(numberOfProcesses);
+		}
 	}
 
 	qsort(processes, numberOfProcesses, sizeof(Process), compareArrivalTime);
@@ -258,16 +257,11 @@ int main(){
 		waitingToReady();
 		readyToRunning();
 
-		updateWaitingState();
-		updateReadyState();
-		updateRunningState();
-
 		if (runningProcesses() == 0 && totalIncomingProcesses() == 0 && waitingQueue.size == 0){
 			break;
 		}
 		theClock++;
 		cpuTimeUtilized += runningProcesses();
-
 	}
 
 	// calculations
