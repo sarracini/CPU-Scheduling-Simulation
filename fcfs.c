@@ -200,6 +200,7 @@ void runningToWaiting(void){
  	int i;
  	for (i = 0; i < NUMBER_OF_PROCESSORS; i++){
  		if (CPUS[i] != NULL){
+ 			CPUS[i]->bursts[CPUS[i]->currentBurst].step++;
  			if (CPUS[i]->bursts[CPUS[i]->currentBurst].step == CPUS[i]->bursts[CPUS[i]->currentBurst].length){
  				CPUS[i]->currentBurst++;
  				if (CPUS[i]->currentBurst < CPUS[i]->numOfBursts){
@@ -210,7 +211,6 @@ void runningToWaiting(void){
  				}
  				CPUS[i] = NULL;
  			}
- 			CPUS[i]->bursts[CPUS[i]->currentBurst].step++;
  		}	
  	}
  }
