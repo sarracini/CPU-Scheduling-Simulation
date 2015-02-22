@@ -114,7 +114,7 @@ float averageTurnaroundTime(int theTurnaround){
 	return result;
 }
  /**
-  * Calcualtes average CPU utilization
+  * Calculates average CPU utilization
   */
 float averageUtilizationTime(int theUtilization){
  	float result = (theUtilization / theClock) * 100.0;
@@ -235,10 +235,11 @@ void readyToRunning(void){
  	}
  }
 /**
- * If a process has finished their CPU burst, move them to the waiting queue and terminate
- * those who have finished their CPU burst. Start the process' next I/O burst. If CPU burst is
- * not finished, move the process to the waiting queue and free the current CPU. If the CPU burst
- * is finished, terminate the process by setting the end time to the current simulation time
+ * If a currently running process has finished their CPU burst, move them to the waiting queue 
+ * and terminate those who have finished their CPU burst. Start the process' next I/O burst. If 
+ * CPU burst is not finished, move the process to the waiting queue and free the current CPU. 
+ * If the CPU burst is finished, terminate the process by setting the end time to the current 
+ * simulation time
  */
 void runningToWaiting(void){
  	int i;
