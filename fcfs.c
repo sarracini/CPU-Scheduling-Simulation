@@ -57,6 +57,7 @@ void resetVariables(void){
 }
 
 void initializeProcessQueue(Process_queue *q){
+	q = (Process_queue*)malloc(sizeof(Process_queue));
 	q->front = q->back = NULL;
 	q->size = 0;
 }
@@ -121,20 +122,15 @@ int compareArrivalTime(const void *a, const void *b){
 }
 
 int compareProcessIds(const void *a, const void *b){
-	Process *first = *((Process **) a);
-	Process *second = *((Process **) b);
+	Process *first = (Process *) a;
+	Process *second = (Process *) b;
 	if (first->pid != second->pid){
-		if (first->pid < second->pid){
-			return -1;
-		}
-		if (first->pid > second->pid){
-			return 1;
-		}
+		return first->pid - second->pid;
 	}
 	else{
 		error_duplicate_pid(first->pid);
+		return -1;
 	}
-	return 0;
 }
 
 int runningProcesses(void){
@@ -219,7 +215,7 @@ void displayResults(float awt, float atat, int sim, float aut, int cs, int pids)
 	printf( "Average waiting time:   %.2f units\n"
 		"Average turnaround time:   %.2f units\n"
 		"Time CPU finished all processes:   %d\n"
-		"Average CPU utilization:   %.2f units\n"
+		"Average CPU utilization:   %.1f%%\n"
 		"Number of context Switces:   %d\n" 
 		"PID(s) of last process(es) to finish:   %d\n", awt, atat, sim, aut, cs, pids);
 }
