@@ -15,13 +15,13 @@
 
 // Some useful global variables
 Process processes[MAX_PROCESSES+1];
-int numberOfProcesses = 0;
-int nextProcess = 0;
-int totalWaitingTime = 0;
-int totalContextSwitches = 0;
-int cpuTimeUtilized = 0;
-int theClock = 0;
-int sumTurnarounds = 0;
+int numberOfProcesses;
+int nextProcess;
+int totalWaitingTime;
+int totalContextSwitches;
+int cpuTimeUtilized;
+int theClock;
+int sumTurnarounds;
 
 // Ready process queue and waiting process queue
 Process_queue readyQueue;
@@ -133,13 +133,7 @@ int totalIncomingProcesses(void){
 int compareArrivalTime(const void *a, const void *b){
 	Process *first = (Process *) a;
 	Process *second = (Process *) b;
-	if (first->arrivalTime < second->arrivalTime){
-		return -1;
-	}
-	if (first->arrivalTime > second->arrivalTime){
-		return 1;
-	}
-	return 0;
+	return first->arrivalTime - second->arrivalTime;
 }
 /**
  * Compare process ID of two processes
@@ -147,13 +141,10 @@ int compareArrivalTime(const void *a, const void *b){
 int compareProcessIds(const void *a, const void *b){
 	Process *first = (Process *) a;
 	Process *second = (Process *) b;
-	if (first->pid != second->pid){
-		return first->pid - second->pid;
-	}
-	else{
+	if (first->pid == second->pid){
 		error_duplicate_pid(first->pid);
-		return -1;
 	}
+	return first->pid - second->pid;
 }
 /**
  * Iterates over all CPU's and to find and return the total number of 
@@ -178,12 +169,9 @@ Process *nextScheduledProcess(void){
 	if (readyQueue.size == 0){
 		return NULL;
 	}
-	else{
-		Process *grabNext = readyQueue.front->data;
-		dequeueProcess(&readyQueue);
-		grabNext->waitingTime++;
-		return grabNext;
-	}
+	Process *grabNext = readyQueue.front->data;
+	dequeueProcess(&readyQueue);
+	return grabNext;
 }
 /**
  * Add any new incoming processes to a temporary queue to be sorted and later added
@@ -202,7 +190,8 @@ void addNewIncomingProcess(void){
  */
 void waitingToReady(void){
  	int i;
- 	for(i = 0; i < waitingQueue.size; i++){
+ 	int waitingQueueSize = waitingQueue.size;
+ 	for(i = 0; i < waitingQueueSize; i++){
  		Process *grabNext = waitingQueue.front->data;
  		dequeueProcess(&waitingQueue);
  		if(grabNext->bursts[grabNext->currentBurst].step == grabNext->bursts[grabNext->currentBurst].length){
@@ -212,7 +201,6 @@ void waitingToReady(void){
  		else{
  			enqueueProcess(&waitingQueue, grabNext);
  		}
- 		grabNext->bursts[grabNext->currentBurst].step++;
  	}
  }
 /**
@@ -245,7 +233,6 @@ void runningToWaiting(void){
  	int i;
  	for (i = 0; i < NUMBER_OF_PROCESSORS; i++){
  		if (CPUS[i] != NULL){
- 			CPUS[i]->bursts[CPUS[i]->currentBurst].step++;
  			if (CPUS[i]->bursts[CPUS[i]->currentBurst].step == CPUS[i]->bursts[CPUS[i]->currentBurst].length){
  				CPUS[i]->currentBurst++;
  				if (CPUS[i]->currentBurst < CPUS[i]->numOfBursts){
@@ -259,18 +246,45 @@ void runningToWaiting(void){
  		}	
  	}
  }
+ /**
+ * Function to update waiting processes, ready processes, and running processes
+ */
+ void updateStates(void){
+ 	int i;
+ 	int waitingQueueSize = waitingQueue.size;
+ 	// update waiting state
+ 	for (i = 0; i < waitingQueueSize; i++){
+ 		Process *grabNext = waitingQueue.front->data;
+ 		dequeueProcess(&waitingQueue);
+ 		grabNext->bursts[grabNext->currentBurst].step++;
+ 		enqueueProcess(&waitingQueue, grabNext);
+ 	}
+ 	// update ready process
+ 	for (i = 0; i < readyQueue.size; i++){
+ 		Process *grabNext = readyQueue.front->data;
+ 		dequeueProcess(&readyQueue);
+ 		grabNext->waitingTime++;
+ 		enqueueProcess(&readyQueue, grabNext);
+ 	}
+ 	// update CPU's
+ 	for (i = 0; i < NUMBER_OF_PROCESSORS; i++){
+ 		if(CPUS[i] != NULL){
+ 			CPUS[i]->bursts[CPUS[i]->currentBurst].step++;
+ 		}
+ 	}
+ }
 /**
  * Display results for average waiting time, average turnaround time, the time
  * the CPU finished all processes, average CPU utilization, number of context
  * switches, and the process ID of the last process to finish.
  */
 void displayResults(float awt, float atat, int sim, float aut, int cs, int pids){
-	printf( "Average waiting time:   %.2f units\n"
-		"Average turnaround time:   %.2f units\n"
-		"Time CPU finished all processes:   %d\n"
-		"Average CPU utilization:   %.1f%%\n"
-		"Number of context Switces:   %d\n" 
-		"PID(s) of last process(es) to finish:   %d\n", awt, atat, sim, aut, cs, pids);
+	printf("Average waiting time\t\t:%.2f units\n"
+		"Average turnaround time\t\t:%.2f units\n"
+		"Time CPU finished all processes\t:%d\n"
+		"Average CPU utilization\t\t:%.1f%%\n"
+		"Number of context Switces\t:%d\n" 
+		"PID of last process to finish\t:%d\n", awt, atat, sim, aut, cs, pids);
 }
 
 int main(){
@@ -278,7 +292,7 @@ int main(){
 	int status = 0;
 	float ut, wt, tat;
 	int lastPID;
-	
+
 	// clear CPU'S, initialize queues, and reset global variables
 	for (i = 0; i < NUMBER_OF_PROCESSORS; i++){
 		CPUS[i] = NULL;
@@ -297,21 +311,24 @@ int main(){
 		}
 	}
 
-	qsort(processes, numberOfProcesses, sizeof(Process), compareArrivalTime);
-	
+	qsort(processes, numberOfProcesses, sizeof(Process*), compareArrivalTime);
+
 	// main execution loop
 	while (1){
 		addNewIncomingProcess();
 		runningToWaiting();
 		waitingToReady();
 		readyToRunning();
+		
+		updateStates();
+		
+		cpuTimeUtilized += runningProcesses();
 
 		// break when there are no more running or incoming processes, and the waiting queue is empty
 		if (runningProcesses() == 0 && totalIncomingProcesses() == 0 && waitingQueue.size == 0){
 			break;
 		}
 		theClock++;
-		cpuTimeUtilized += runningProcesses();
 	}
 
 	// calculations
@@ -323,11 +340,11 @@ int main(){
 			lastPID = processes[i].pid;
 		}
 	}
-
+	
 	wt = averageWaitTime(totalWaitingTime);
 	tat = averageTurnaroundTime(sumTurnarounds);
 	ut = averageUtilizationTime(cpuTimeUtilized);
-	
+
 	displayResults(wt, tat, theClock, ut, totalContextSwitches, lastPID);
 	
 	return 0;

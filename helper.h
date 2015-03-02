@@ -61,6 +61,7 @@ void readyToRunning(void);
 void runningToWaiting(void);
 void displayResults(float awt, float atat, int sim, float aut, int cs, int pid);
 void resetVariables(void);
+void updateState(void);
 
 /* Queue management functions */
 Process_node *createProcessNode(Process *);
