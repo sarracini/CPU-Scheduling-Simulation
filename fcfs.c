@@ -103,21 +103,21 @@ void dequeueProcess(Process_queue *q) {
  * Calulates average wait time 
  */
 float averageWaitTime(int theWait){
-	float result = theWait / (double) numberOfProcesses;
+	float result = theWait / (float) numberOfProcesses;
 	return result;
 }
 /**
  * Calculates average turnaround time
  */
 float averageTurnaroundTime(int theTurnaround){
-	float result = theTurnaround / (double) numberOfProcesses;
+	float result = theTurnaround / (float) numberOfProcesses;
 	return result;
 }
  /**
   * Calculates average CPU utilization
   */
 float averageUtilizationTime(int theUtilization){
- 	float result = (theUtilization / theClock) * 100.0;
+ 	float result = (theUtilization * 100.0) / theClock;
  	return result;
  }
 /**
@@ -279,12 +279,14 @@ void runningToWaiting(void){
  * switches, and the process ID of the last process to finish.
  */
 void displayResults(float awt, float atat, int sim, float aut, int cs, int pids){
-	printf("Average waiting time\t\t:%.2f units\n"
+	printf("------------------First-Come-First-Serve------------------\n"
+		"Average waiting time\t\t:%.2f units\n"
 		"Average turnaround time\t\t:%.2f units\n"
 		"Time CPU finished all processes\t:%d\n"
 		"Average CPU utilization\t\t:%.1f%%\n"
 		"Number of context Switces\t:%d\n" 
-		"PID of last process to finish\t:%d\n", awt, atat, sim, aut, cs, pids);
+		"PID of last process to finish\t:%d\n"
+		"------------------------------------------------------------\n", awt, atat, sim, aut, cs, pids);
 }
 
 int main(){
@@ -314,7 +316,7 @@ int main(){
 	qsort(processes, numberOfProcesses, sizeof(Process*), compareArrivalTime);
 
 	// main execution loop
-	while (1){
+	while (numberOfProcesses){
 		addNewIncomingProcess();
 		runningToWaiting();
 		waitingToReady();
@@ -340,7 +342,7 @@ int main(){
 			lastPID = processes[i].pid;
 		}
 	}
-	
+	printf("sumTurnarounds %d\n", sumTurnarounds);
 	wt = averageWaitTime(totalWaitingTime);
 	tat = averageTurnaroundTime(sumTurnarounds);
 	ut = averageUtilizationTime(cpuTimeUtilized);

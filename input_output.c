@@ -116,7 +116,6 @@ int empty(char *s) {
    (also returns COMMENT_LINE in event of a comment, signified by a leading
     COMMENT_CHAR character, being read.) */
 int readProcess(Process *dest) {
-    int i;
     int pid = -1;
     int arrivalTime = 0;
     int firstBurst = 0;
