@@ -342,7 +342,7 @@ int main(){
 			lastPID = processes[i].pid;
 		}
 	}
-	printf("sumTurnarounds %d\n", sumTurnarounds);
+
 	wt = averageWaitTime(totalWaitingTime);
 	tat = averageTurnaroundTime(sumTurnarounds);
 	ut = averageUtilizationTime(cpuTimeUtilized);
