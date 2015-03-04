@@ -37,7 +37,7 @@ Run first come first serve with:
 ``` sh
 $ fcfs  < CPULoad.dat
 ```
-Run round robin with a time slice:
+Run round robin with any time slice:
 
 ``` sh
 $ rr 2  < CPULoad.dat
