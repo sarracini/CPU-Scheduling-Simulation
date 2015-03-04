@@ -23,16 +23,24 @@ Compile with:
 ``` sh
 $ gcc fcfs.c input_output.c
 ```
+``` sh
+$ gcc rr.c input_output.c
+```
 
 ## Notes
 Sample static CPU workload (CPULoad.dat) is given to run with each file.
 
 ## Usage
 
-Run with:
+Run first come first serve with:
 
 ``` sh
 $ fcfs  < CPULoad.dat
+```
+Run round robin with a time slice:
+
+``` sh
+$ rr 2  < CPULoad.dat
 ```
 
 ## License
