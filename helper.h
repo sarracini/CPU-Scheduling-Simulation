@@ -48,9 +48,9 @@ void error_bad_quantum(void);
 void error_invalid_number_of_processes(int numberOfProcesses);
 
 /* Scheduling functions */
-float averageWaitTime(int theWait);
-float averageTurnaroundTime(int theTurnaround);
-float averageUtilizationTime(int theUtilization);
+double averageWaitTime(int theWait);
+double averageTurnaroundTime(int theTurnaround);
+double averageUtilizationTime(int theUtilization);
 Process *nextScheduledProcess(void);
 int compareArrivalTime(const void *a, const void *b);
 int runningProcesses(void);

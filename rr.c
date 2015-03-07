@@ -22,6 +22,7 @@ int totalContextSwitches;
 int cpuTimeUtilized;
 int theClock;
 int sumTurnarounds;
+int timeQuantum;
 
 // Ready process queue and waiting process queue
 Process_queue readyQueue;
@@ -33,6 +34,10 @@ Process *CPUS[NUMBER_OF_PROCESSORS];
 // Temporary "Pre-Ready" queue
 Process *tmpQueue[MAX_PROCESSES+1];
 int tmpQueueSize;
+
+/*to do:
+ - fix comments
+*/
 
 /**
  * Creates a single process node with pointer to data and next
@@ -102,22 +107,22 @@ void dequeueProcess(Process_queue *q) {
 /**
  * Calulates average wait time 
  */
-float averageWaitTime(int theWait){
-	float result = theWait / (float) numberOfProcesses;
+double averageWaitTime(int theWait){
+	double result = theWait / (double) numberOfProcesses;
 	return result;
 }
 /**
  * Calculates average turnaround time
  */
-float averageTurnaroundTime(int theTurnaround){
-	float result = theTurnaround / (float) numberOfProcesses;
+double averageTurnaroundTime(int theTurnaround){
+	double result = theTurnaround / (double) numberOfProcesses;
 	return result;
 }
  /**
   * Calculates average CPU utilization
   */
-float averageUtilizationTime(int theUtilization){
- 	float result = (theUtilization * 100.0) / theClock;
+double averageUtilizationTime(int theUtilization){
+ 	double result = (theUtilization * 100.0) / theClock;
  	return result;
  }
 /**
@@ -179,7 +184,10 @@ Process *nextScheduledProcess(void){
  */
 void addNewIncomingProcess(void){
 	while(nextProcess < numberOfProcesses && processes[nextProcess].arrivalTime <= theClock){
-		tmpQueue[tmpQueueSize++] = &processes[nextProcess++];
+		tmpQueue[tmpQueueSize] = &processes[nextProcess];
+		tmpQueue[tmpQueueSize]->quantumRemaining = timeQuantum;
+		tmpQueueSize++;
+		nextProcess++;
 	}
 }
 /**
@@ -196,6 +204,8 @@ void waitingToReady(void){
  		dequeueProcess(&waitingQueue);
  		if(grabNext->bursts[grabNext->currentBurst].step == grabNext->bursts[grabNext->currentBurst].length){
  			grabNext->currentBurst++;
+ 			grabNext->quantumRemaining = timeQuantum;
+ 			grabNext->endTime = theClock;
  			tmpQueue[tmpQueueSize++] = grabNext;
  		}
  		else{
@@ -230,7 +240,9 @@ void readyToRunning(void){
  * simulation time
  */
 void runningToWaiting(void){
- 	int i;
+	int num = 0;
+	Process *preemptive[NUMBER_OF_PROCESSORS];
+ 	int i, j;
  	for (i = 0; i < NUMBER_OF_PROCESSORS; i++){
  		if (CPUS[i] != NULL){
  			if (CPUS[i]->bursts[CPUS[i]->currentBurst].step == CPUS[i]->bursts[CPUS[i]->currentBurst].length){
@@ -243,8 +255,20 @@ void runningToWaiting(void){
  				}
  				CPUS[i] = NULL;
  			}
- 			totalContextSwitches++;
+ 			// context switch takes longer than time slice
+ 			else if(CPUS[i]->quantumRemaining == 0){
+ 				preemptive[num] = CPUS[i];
+ 				preemptive[num]->quantumRemaining = timeQuantum;
+ 				num++;
+ 				totalContextSwitches++;
+ 				CPUS[i] = NULL;
+ 			}
  		}	
+ 	}
+ 	// sort em and put em in the ready queue
+ 	qsort(preemptive, num, sizeof(Process*), compareProcessIds);
+ 	for (j = 0; j < num; j++){
+ 		enqueueProcess(&readyQueue, preemptive[j]);
  	}
  }
  /**
@@ -271,6 +295,7 @@ void runningToWaiting(void){
  	for (i = 0; i < NUMBER_OF_PROCESSORS; i++){
  		if(CPUS[i] != NULL){
  			CPUS[i]->bursts[CPUS[i]->currentBurst].step++;
+ 			CPUS[i]->quantumRemaining--;
  		}
  	}
  }
@@ -290,11 +315,21 @@ void displayResults(float awt, float atat, int sim, float aut, int cs, int pids)
 		"-------------------------------------------------\n", awt, atat, sim, aut, cs, pids);
 }
 
-int main(){
+int main(int argc, char *argv[]){
 	int i;
 	int status = 0;
-	float ut, wt, tat;
+	double ut, wt, tat;
 	int lastPID;
+	timeQuantum = atoi(argv[1]);
+
+	if (argc > 2){
+		printf("Incorrect number of arguments, only add one time slice.\n");
+		exit(-1);
+	}
+	else if (argc < 2){
+		printf("Must add time slice.\n");
+		exit(-1);
+	}
 
 	// clear CPU'S, initialize queues, and reset global variables
 	for (i = 0; i < NUMBER_OF_PROCESSORS; i++){
@@ -313,7 +348,7 @@ int main(){
 			error_invalid_number_of_processes(numberOfProcesses);
 		}
 	}
-
+	
 	qsort(processes, numberOfProcesses, sizeof(Process*), compareArrivalTime);
 
 	// main execution loop
