@@ -26,6 +26,9 @@ $ gcc fcfs.c input_output.c
 ``` sh
 $ gcc rr.c input_output.c
 ```
+``` sh
+$ gcc fbq.c input_output.c
+```
 
 ## Notes
 Sample static CPU workload (CPULoad.dat) is given to run with each file.
@@ -41,6 +44,11 @@ Run round robin with any time slice:
 
 ``` sh
 $ rr 2  < CPULoad.dat
+```
+Run three level feedback queue with any two time slices:
+
+``` sh
+$ fbq 10 30  < CPULoad.dat
 ```
 
 ## License
