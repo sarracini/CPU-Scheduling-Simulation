@@ -35,10 +35,6 @@ Process *CPUS[NUMBER_OF_PROCESSORS];
 Process *tmpQueue[MAX_PROCESSES+1];
 int tmpQueueSize;
 
-/*to do:
- - fix comments
-*/
-
 /**
  * Creates a single process node with pointer to data and next
  */
