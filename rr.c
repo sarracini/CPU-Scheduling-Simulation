@@ -237,7 +237,7 @@ void readyToRunning(void){
  * and terminate those who have finished their CPU burst. Start the process' next I/O burst. If 
  * CPU burst is not finished, move the process to the waiting queue and free the current CPU. 
  * If the CPU burst is finished, terminate the process by setting the end time to the current 
- * simulation time
+ * simulation time. Alternatively, the time slice expires before the current burst is over.
  */
 void runningToWaiting(void){
 	int num = 0;
@@ -265,7 +265,7 @@ void runningToWaiting(void){
  			}
  		}	
  	}
- 	// sort em and put em in the ready queue
+ 	// sort preemptive processes by process ID's and enqueue in the ready queue
  	qsort(preemptive, num, sizeof(Process*), compareProcessIds);
  	for (j = 0; j < num; j++){
  		enqueueProcess(&readyQueue, preemptive[j]);
@@ -312,7 +312,7 @@ void displayResults(float awt, float atat, int sim, float aut, int cs, int pids)
 		"Average CPU utilization\t\t:%.1f%%\n"
 		"Number of context Switces\t:%d\n" 
 		"PID of last process to finish\t:%d\n"
-		"-------------------------------------------------\n", awt, atat, sim, aut, cs, pids);
+		"------------------------------------------------\n", awt, atat, sim, aut, cs, pids);
 }
 
 int main(int argc, char *argv[]){
@@ -322,6 +322,7 @@ int main(int argc, char *argv[]){
 	int lastPID;
 	timeQuantum = atoi(argv[1]);
 
+	// input error handling
 	if (argc > 2){
 		printf("Incorrect number of arguments, only add one time slice.\n");
 		exit(-1);
@@ -355,17 +356,17 @@ int main(int argc, char *argv[]){
 	while (numberOfProcesses){
 		addNewIncomingProcess();
 		runningToWaiting();
-		waitingToReady();
 		readyToRunning();
+		waitingToReady();
 		
 		updateStates();
-		
-		cpuTimeUtilized += runningProcesses();
 
 		// break when there are no more running or incoming processes, and the waiting queue is empty
 		if (runningProcesses() == 0 && totalIncomingProcesses() == 0 && waitingQueue.size == 0){
 			break;
 		}
+
+		cpuTimeUtilized += runningProcesses();
 		theClock++;
 	}
 
