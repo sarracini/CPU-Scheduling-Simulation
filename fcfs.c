@@ -102,22 +102,22 @@ void dequeueProcess(Process_queue *q) {
 /**
  * Calulates average wait time 
  */
-float averageWaitTime(int theWait){
-	float result = theWait / (float) numberOfProcesses;
+double averageWaitTime(int theWait){
+	double result = theWait / (double) numberOfProcesses;
 	return result;
 }
 /**
  * Calculates average turnaround time
  */
-float averageTurnaroundTime(int theTurnaround){
-	float result = theTurnaround / (float) numberOfProcesses;
+double averageTurnaroundTime(int theTurnaround){
+	double result = theTurnaround / (double) numberOfProcesses;
 	return result;
 }
  /**
   * Calculates average CPU utilization
   */
-float averageUtilizationTime(int theUtilization){
- 	float result = (theUtilization * 100.0) / theClock;
+double averageUtilizationTime(int theUtilization){
+ 	double result = (theUtilization * 100.0) / theClock;
  	return result;
  }
 /**
@@ -319,8 +319,8 @@ int main(){
 	while (numberOfProcesses){
 		addNewIncomingProcess();
 		runningToWaiting();
-		waitingToReady();
 		readyToRunning();
+		waitingToReady();
 		
 		updateStates();
 		
