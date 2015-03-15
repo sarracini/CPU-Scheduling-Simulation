@@ -22,12 +22,12 @@ int totalContextSwitches;
 int cpuTimeUtilized;
 int theClock;
 int sumTurnarounds;
-int timeQuantum1;
-int timeQuantum2;
+int currentPriority;
+int timeQuantums[NUMBER_OF_LEVELS-1];
 
 // Ready process queue and waiting process queue
-Process_queue readyQueue;
-Process_queue waitingQueue;
+Process_queue readyQueue[NUMBER_OF_LEVELS];
+Process_queue waitingQueue[NUMBER_OF_LEVELS];
 
 // CPU's
 Process *CPUS[NUMBER_OF_PROCESSORS];
@@ -60,6 +60,7 @@ void resetVariables(void){
 	theClock = 0;
 	sumTurnarounds = 0;
 	tmpQueueSize = 0;
+	currentPriority = 0;
 }
 /**
  * Initializes a process queue. Makes an empty queue
@@ -149,6 +150,17 @@ int compareProcessIds(const void *a, const void *b){
 	return first->pid - second->pid;
 }
 /**
+ * Compare priorities of two processes
+ */
+int comparePriority(const void *a, const void *b){
+	Process *first = (Process *) a;
+	Process *second = (Process *) b;
+	if (first->priority == second->priority){
+		return compareProcessIds(first, second);
+	}
+	return first->priority - second->priority;
+}
+/**
  * Iterates over all CPU's and to find and return the total number of 
  * currently running processes
  */
@@ -168,11 +180,11 @@ int runningProcesses(void){
  * the ready state. Returns the next process to be run
  */
 Process *nextScheduledProcess(void){
-	if (readyQueue.size == 0){
+	if (readyQueue[0].size == 0){
 		return NULL;
 	}
-	Process *grabNext = readyQueue.front->data;
-	dequeueProcess(&readyQueue);
+	Process *grabNext = readyQueue[currentPriority].front->data;
+	dequeueProcess(&readyQueue[currentPriority]);
 	return grabNext;
 }
 /**
@@ -182,7 +194,7 @@ Process *nextScheduledProcess(void){
 void addNewIncomingProcess(void){
 	while(nextProcess < numberOfProcesses && processes[nextProcess].arrivalTime <= theClock){
 		tmpQueue[tmpQueueSize] = &processes[nextProcess];
-		tmpQueue[tmpQueueSize]->quantumRemaining = timeQuantum1;
+		tmpQueue[tmpQueueSize]->quantumRemaining = timeQuantums[0];
 		tmpQueueSize++;
 		nextProcess++;
 	}
@@ -195,18 +207,18 @@ void addNewIncomingProcess(void){
  */
 void waitingToReady(void){
  	int i;
- 	int waitingQueueSize = waitingQueue.size;
+ 	int waitingQueueSize = waitingQueue[currentPriority].size;
  	for(i = 0; i < waitingQueueSize; i++){
- 		Process *grabNext = waitingQueue.front->data;
- 		dequeueProcess(&waitingQueue);
+ 		Process *grabNext = waitingQueue[currentPriority].front->data;
+ 		dequeueProcess(&waitingQueue[currentPriority]);
  		if(grabNext->bursts[grabNext->currentBurst].step == grabNext->bursts[grabNext->currentBurst].length){
  			grabNext->currentBurst++;
- 			grabNext->quantumRemaining = timeQuantum1;
+ 			grabNext->quantumRemaining = timeQuantums[0];
  			grabNext->endTime = theClock;
  			tmpQueue[tmpQueueSize++] = grabNext;
  		}
  		else{
- 			enqueueProcess(&waitingQueue, grabNext);
+ 			enqueueProcess(&waitingQueue[currentPriority], grabNext);
  		}
  	}
  }
@@ -220,7 +232,7 @@ void readyToRunning(void){
  	int i;
  	qsort(tmpQueue, tmpQueueSize, sizeof(Process*), compareProcessIds);
  	for (i = 0; i < tmpQueueSize; i++){
- 		enqueueProcess(&readyQueue, tmpQueue[i]);
+ 		enqueueProcess(&readyQueue[currentPriority], tmpQueue[i]);
  	}
 	tmpQueueSize = 0;
  	for (i = 0; i < NUMBER_OF_PROCESSORS; i++){
@@ -245,7 +257,7 @@ void runningToWaiting(void){
  			if (CPUS[i]->bursts[CPUS[i]->currentBurst].step == CPUS[i]->bursts[CPUS[i]->currentBurst].length){
  				CPUS[i]->currentBurst++;
  				if (CPUS[i]->currentBurst < CPUS[i]->numOfBursts){
- 					enqueueProcess(&waitingQueue, CPUS[i]);
+ 					enqueueProcess(&waitingQueue[currentPriority], CPUS[i]);
  				}
  				else{
  					CPUS[i]->endTime = theClock;
@@ -255,7 +267,7 @@ void runningToWaiting(void){
  			// context switch takes longer than time slice
  			else if(CPUS[i]->quantumRemaining == 0){
  				preemptive[num] = CPUS[i];
- 				preemptive[num]->quantumRemaining = timeQuantum1;
+ 				preemptive[num]->quantumRemaining = timeQuantums[0];
  				num++;
  				totalContextSwitches++;
  				CPUS[i] = NULL;
@@ -265,7 +277,7 @@ void runningToWaiting(void){
  	// sort preemptive processes by process ID's and enqueue in the ready queue
  	qsort(preemptive, num, sizeof(Process*), compareProcessIds);
  	for (j = 0; j < num; j++){
- 		enqueueProcess(&readyQueue, preemptive[j]);
+ 		enqueueProcess(&readyQueue[currentPriority], preemptive[j]);
  	}
  }
  /**
@@ -273,20 +285,20 @@ void runningToWaiting(void){
  */
  void updateStates(void){
  	int i;
- 	int waitingQueueSize = waitingQueue.size;
+ 	int waitingQueueSize = waitingQueue[currentPriority].size;
  	// update waiting state
  	for (i = 0; i < waitingQueueSize; i++){
- 		Process *grabNext = waitingQueue.front->data;
- 		dequeueProcess(&waitingQueue);
+ 		Process *grabNext = waitingQueue[i].front->data;
+ 		dequeueProcess(&waitingQueue[i]);
  		grabNext->bursts[grabNext->currentBurst].step++;
- 		enqueueProcess(&waitingQueue, grabNext);
+ 		enqueueProcess(&waitingQueue[i], grabNext);
  	}
  	// update ready process
- 	for (i = 0; i < readyQueue.size; i++){
- 		Process *grabNext = readyQueue.front->data;
- 		dequeueProcess(&readyQueue);
+ 	for (i = 0; i < readyQueue[currentPriority].size; i++){
+ 		Process *grabNext = readyQueue[i].front->data;
+ 		dequeueProcess(&readyQueue[i]);
  		grabNext->waitingTime++;
- 		enqueueProcess(&readyQueue, grabNext);
+ 		enqueueProcess(&readyQueue[i], grabNext);
  	}
  	// update CPU's
  	for (i = 0; i < NUMBER_OF_PROCESSORS; i++){
@@ -309,7 +321,7 @@ void displayResults(float awt, float atat, int sim, float aut, int cs, int pids)
 		"Average CPU utilization\t\t:%.1f%%\n"
 		"Number of context Switces\t:%d\n" 
 		"PID of last process to finish\t:%d\n"
-		"------------------------------------------------\n", awt, atat, sim, aut, cs, pids);
+		"----------------------------------------------\n", awt, atat, sim, aut, cs, pids);
 }
 
 int main(int argc, char *argv[]){
@@ -317,16 +329,16 @@ int main(int argc, char *argv[]){
 	int status = 0;
 	double ut, wt, tat;
 	int lastPID;
-	timeQuantum1 = atoi(argv[1]);
-	timeQuantum2 = atoi(argv[2]);
+	timeQuantums[0] = atoi(argv[1]);
+	timeQuantums[1] = atoi(argv[2]);
 
 	// input error handling
-	if (argc > 2){
-		printf("Incorrect number of arguments, only add one time slice.\n");
+	if (argc > 3){
+		printf("Incorrect number of arguments, only add two time slices.\n");
 		exit(-1);
 	}
-	else if (argc < 2){
-		printf("Must add time slice.\n");
+	else if (argc < 3){
+		printf("Must add two time slices.\n");
 		exit(-1);
 	}
 
@@ -334,9 +346,11 @@ int main(int argc, char *argv[]){
 	for (i = 0; i < NUMBER_OF_PROCESSORS; i++){
 		CPUS[i] = NULL;
 	}
+	for (i = 0; i < NUMBER_OF_LEVELS; ++i){
+		initializeProcessQueue(&readyQueue[i]);
+		initializeProcessQueue(&waitingQueue[i]);
+	}
 	resetVariables();
-	initializeProcessQueue(&readyQueue);
-	initializeProcessQueue(&waitingQueue);
 
 	// read in workload and store processes
 	while( (status = (readProcess(&processes[numberOfProcesses]))) ){
@@ -360,7 +374,7 @@ int main(int argc, char *argv[]){
 		updateStates();
 
 		// break when there are no more running or incoming processes, and the waiting queue is empty
-		if (runningProcesses() == 0 && totalIncomingProcesses() == 0 && waitingQueue.size == 0){
+		if (runningProcesses() == 0 && totalIncomingProcesses() == 0 && waitingQueue[2].size == 0){
 			break;
 		}
 

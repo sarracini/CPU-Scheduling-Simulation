@@ -5,6 +5,7 @@
 #define MAX_TOKEN_LENGTH 30
 #define MAX_LINE_LENGTH (1<<16)
 #define NUMBER_OF_PROCESSORS 4
+#define NUMBER_OF_LEVELS 3
 
 #define COMMENT_CHAR '#'
 #define COMMENT_LINE -1

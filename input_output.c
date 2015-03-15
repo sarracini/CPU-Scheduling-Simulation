@@ -141,6 +141,7 @@ int readProcess(Process *dest) {
     dest->bursts[0].length = firstBurst;
     dest->bursts[0].step = 0;
     dest->numOfBursts = 1;
+    dest->priority = 0;
     
     /* read in the rest of the io and cpu bursts in pairs ([IO, CPU], ...) */
     while (!empty(ptr)) {
