@@ -22,12 +22,12 @@ int totalContextSwitches;
 int cpuTimeUtilized;
 int theClock;
 int sumTurnarounds;
-int currentPriority;
+int currentLevel = 0;
 int timeQuantums[NUMBER_OF_LEVELS-1];
 
-// Ready process queue and waiting process queue
+// Ready process queues and waiting process queues
 Process_queue readyQueue[NUMBER_OF_LEVELS];
-Process_queue waitingQueue[NUMBER_OF_LEVELS];
+Process_queue waitingQueue;
 
 // CPU's
 Process *CPUS[NUMBER_OF_PROCESSORS];
@@ -60,7 +60,7 @@ void resetVariables(void){
 	theClock = 0;
 	sumTurnarounds = 0;
 	tmpQueueSize = 0;
-	currentPriority = 0;
+	currentLevel= 0;
 }
 /**
  * Initializes a process queue. Makes an empty queue
@@ -180,11 +180,11 @@ int runningProcesses(void){
  * the ready state. Returns the next process to be run
  */
 Process *nextScheduledProcess(void){
-	if (readyQueue[0].size == 0){
+	if (readyQueue[currentLevel].size == 0){
 		return NULL;
 	}
-	Process *grabNext = readyQueue[currentPriority].front->data;
-	dequeueProcess(&readyQueue[currentPriority]);
+	Process *grabNext = readyQueue[currentLevel].front->data;
+	dequeueProcess(&readyQueue[currentLevel]);
 	return grabNext;
 }
 /**
@@ -207,18 +207,21 @@ void addNewIncomingProcess(void){
  */
 void waitingToReady(void){
  	int i;
- 	int waitingQueueSize = waitingQueue[currentPriority].size;
+ 	int waitingQueueSize = waitingQueue.size;
  	for(i = 0; i < waitingQueueSize; i++){
- 		Process *grabNext = waitingQueue[currentPriority].front->data;
- 		dequeueProcess(&waitingQueue[currentPriority]);
+ 		Process *grabNext = waitingQueue.front->data;
+ 		dequeueProcess(&waitingQueue);
  		if(grabNext->bursts[grabNext->currentBurst].step == grabNext->bursts[grabNext->currentBurst].length){
  			grabNext->currentBurst++;
+ 			if (grabNext->quantumRemaining > timeQuantums[0]){
+ 				grabNext->quantumRemaining = timeQuantums[1];
+ 			}
  			grabNext->quantumRemaining = timeQuantums[0];
  			grabNext->endTime = theClock;
  			tmpQueue[tmpQueueSize++] = grabNext;
  		}
  		else{
- 			enqueueProcess(&waitingQueue[currentPriority], grabNext);
+ 			enqueueProcess(&waitingQueue, grabNext);
  		}
  	}
  }
@@ -232,7 +235,7 @@ void readyToRunning(void){
  	int i;
  	qsort(tmpQueue, tmpQueueSize, sizeof(Process*), compareProcessIds);
  	for (i = 0; i < tmpQueueSize; i++){
- 		enqueueProcess(&readyQueue[currentPriority], tmpQueue[i]);
+ 		enqueueProcess(&readyQueue[currentLevel], tmpQueue[i]);
  	}
 	tmpQueueSize = 0;
  	for (i = 0; i < NUMBER_OF_PROCESSORS; i++){
@@ -251,13 +254,13 @@ void readyToRunning(void){
 void runningToWaiting(void){
 	int num = 0;
 	Process *preemptive[NUMBER_OF_PROCESSORS];
- 	int i, j;
+ 	int i, j, k;
  	for (i = 0; i < NUMBER_OF_PROCESSORS; i++){
  		if (CPUS[i] != NULL){
  			if (CPUS[i]->bursts[CPUS[i]->currentBurst].step == CPUS[i]->bursts[CPUS[i]->currentBurst].length){
  				CPUS[i]->currentBurst++;
  				if (CPUS[i]->currentBurst < CPUS[i]->numOfBursts){
- 					enqueueProcess(&waitingQueue[currentPriority], CPUS[i]);
+ 					enqueueProcess(&waitingQueue, CPUS[i]);
  				}
  				else{
  					CPUS[i]->endTime = theClock;
@@ -267,7 +270,7 @@ void runningToWaiting(void){
  			// context switch takes longer than time slice
  			else if(CPUS[i]->quantumRemaining == 0){
  				preemptive[num] = CPUS[i];
- 				preemptive[num]->quantumRemaining = timeQuantums[0];
+ 				preemptive[num]->quantumRemaining = timeQuantums[1];
  				num++;
  				totalContextSwitches++;
  				CPUS[i] = NULL;
@@ -277,7 +280,13 @@ void runningToWaiting(void){
  	// sort preemptive processes by process ID's and enqueue in the ready queue
  	qsort(preemptive, num, sizeof(Process*), compareProcessIds);
  	for (j = 0; j < num; j++){
- 		enqueueProcess(&readyQueue[currentPriority], preemptive[j]);
+ 		enqueueProcess(&readyQueue[currentLevel+1], preemptive[j]);
+ 	}
+ 		
+ 	// once current level is finished processesing all items, move to next level
+ 	int readyQueueSize = readyQueue[currentLevel].size;
+ 	if (readyQueueSize == 0){
+ 		currentLevel++;
  	}
  }
  /**
@@ -285,16 +294,16 @@ void runningToWaiting(void){
  */
  void updateStates(void){
  	int i;
- 	int waitingQueueSize = waitingQueue[currentPriority].size;
+ 	int waitingQueueSize = waitingQueue.size;
  	// update waiting state
  	for (i = 0; i < waitingQueueSize; i++){
- 		Process *grabNext = waitingQueue[i].front->data;
- 		dequeueProcess(&waitingQueue[i]);
+ 		Process *grabNext = waitingQueue.front->data;
+ 		dequeueProcess(&waitingQueue);
  		grabNext->bursts[grabNext->currentBurst].step++;
- 		enqueueProcess(&waitingQueue[i], grabNext);
+ 		enqueueProcess(&waitingQueue, grabNext);
  	}
  	// update ready process
- 	for (i = 0; i < readyQueue[currentPriority].size; i++){
+ 	for (i = 0; i < readyQueue[currentLevel].size; i++){
  		Process *grabNext = readyQueue[i].front->data;
  		dequeueProcess(&readyQueue[i]);
  		grabNext->waitingTime++;
@@ -348,8 +357,8 @@ int main(int argc, char *argv[]){
 	}
 	for (i = 0; i < NUMBER_OF_LEVELS; ++i){
 		initializeProcessQueue(&readyQueue[i]);
-		initializeProcessQueue(&waitingQueue[i]);
 	}
+	initializeProcessQueue(&waitingQueue);
 	resetVariables();
 
 	// read in workload and store processes
@@ -374,7 +383,7 @@ int main(int argc, char *argv[]){
 		updateStates();
 
 		// break when there are no more running or incoming processes, and the waiting queue is empty
-		if (runningProcesses() == 0 && totalIncomingProcesses() == 0 && waitingQueue[2].size == 0){
+		if (runningProcesses() == 0 && totalIncomingProcesses() == 0 && waitingQueue.size == 0){
 			break;
 		}
 
