@@ -188,15 +188,15 @@ Process *nextScheduledProcess(void){
 	if (readyQueue[currentLevel].size == 0){
 		return NULL;
 	}
-	if (readyQueueSize1 > 0){
+	if (readyQueueSize1 != 0){
 		grabNext = readyQueue[0].front->data;
 		dequeueProcess(&readyQueue[0]);
 	}
-	else if (readyQueueSize2 > 0){
+	else if (readyQueueSize2 != 0){
 		grabNext = readyQueue[1].front->data;
 		dequeueProcess(&readyQueue[1]);
 	} 
-	else if (readyQueueSize3 > 0){
+	else if (readyQueueSize3 != 0){
 		grabNext = readyQueue[2].front->data;
 		dequeueProcess(&readyQueue[2]);
 	}
@@ -229,9 +229,9 @@ void waitingToReady(void){
  		dequeueProcess(&waitingQueue);
  		if(grabNext->bursts[grabNext->currentBurst].step == grabNext->bursts[grabNext->currentBurst].length){
  			grabNext->currentBurst++;
- 		//	if (grabNext->quantumRemaining > timeQuantums[0]){
- 			//	grabNext->quantumRemaining = timeQuantums[1];
- 			//}
+ 			if (grabNext->quantumRemaining > timeQuantums[0]){
+ 				grabNext->quantumRemaining = timeQuantums[1];
+ 			}
  			grabNext->quantumRemaining = timeQuantums[0];
  			grabNext->endTime = theClock;
  			tmpQueue[tmpQueueSize++] = grabNext;
@@ -307,7 +307,7 @@ void runningToWaiting(void){
  	// sort preemptive processes by process ID's and enqueue in the ready queue
  	qsort(preemptive, num, sizeof(Process*), compareProcessIds);
  	for (j = 0; j < num; j++){
- 		enqueueProcess(&readyQueue[currentLevel+1], preemptive[j]);
+ 		enqueueProcess(&readyQueue[currentLevel], preemptive[j]);
  	}
  		
  	// once current level is finished processesing all items, move to next level
@@ -421,16 +421,12 @@ int main(int argc, char *argv[]){
 		cpuTimeUtilized += runningProcesses();
 		theClock++;
 	}
-	printf("number of processes: %d\n", numberOfProcesses);
 	// calculations
 	for(i = 0; i < numberOfProcesses; i++){
 		sumTurnarounds +=processes[i].endTime - processes[i].arrivalTime;
 		totalWaitingTime += processes[i].waitingTime;
-		printf("total wait time: %d\n", totalWaitingTime);
-		printf("sum of turnarounds: %d\n", sumTurnarounds);
 
 		if (processes[i].endTime == theClock){
-			printf("counting process ids\n");
 			lastPID = processes[i].pid;
 		}
 	}
