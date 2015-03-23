@@ -185,10 +185,7 @@ Process *nextScheduledProcess(void){
 	int readyQueueSize3 = readyQueue[2].size;
 	Process *grabNext;
 	
-	if (readyQueue[currentLevel].size == 0){
-		return NULL;
-	}
-	else if (readyQueueSize1 != 0){
+	if (readyQueueSize1 != 0){
 		grabNext = readyQueue[0].front->data;
 		dequeueProcess(&readyQueue[0]);
 	}
@@ -210,7 +207,6 @@ void addNewIncomingProcess(void){
 	while(nextProcess < numberOfProcesses && processes[nextProcess].arrivalTime <= theClock){
 		tmpQueue[tmpQueueSize] = &processes[nextProcess];
 		tmpQueue[tmpQueueSize]->quantumRemaining = timeQuantums[0];
-		tmpQueue[tmpQueueSize]->currentQueue = 1;
 		tmpQueueSize++;
 		nextProcess++;
 	}
@@ -226,12 +222,11 @@ void waitingToReady(void){
  	int waitingQueueSize = waitingQueue.size;
  	for(i = 0; i < waitingQueueSize; i++){
  		Process *grabNext = waitingQueue.front->data;
- 		grabNext->quantumRemaining = 0;
- 		grabNext->priority = 0;
  		dequeueProcess(&waitingQueue);
  		if(grabNext->bursts[grabNext->currentBurst].step == grabNext->bursts[grabNext->currentBurst].length){
  			grabNext->currentBurst++;
- 			//grabNext->quantumRemaining = timeQuantums[0];
+ 			grabNext->priority = 0;
+ 			grabNext->quantumRemaining = timeQuantums[0];
  			grabNext->endTime = theClock;
  			tmpQueue[tmpQueueSize++] = grabNext;
  		}
@@ -286,7 +281,7 @@ void runningToWaiting(void){
  				CPUS[i]->priority = 1;
  				totalContextSwitches++;
  				enqueueProcess(&readyQueue[1], CPUS[i]);
- 				CPUS[i] == NULL;
+ 				CPUS[i] = NULL;
  			}
  			else if(CPUS[i]->bursts[CPUS[i]->currentBurst].step != CPUS[i]->bursts[CPUS[i]->currentBurst].length 
  				&& CPUS[i]->quantumRemaining != timeQuantums[1] && CPUS[i]->priority == 1){
@@ -294,7 +289,7 @@ void runningToWaiting(void){
  					CPUS[i]->quantumRemaining = 0;
  					totalContextSwitches++;
  					enqueueProcess(&readyQueue[1], CPUS[i]);
- 					CPUS[i] == NULL;
+ 					CPUS[i] = NULL;
  				}
  				else{
  					CPUS[i]->bursts[CPUS[i]->currentBurst].step++;
@@ -307,7 +302,7 @@ void runningToWaiting(void){
  				CPUS[i]->priority = 2;
  				totalContextSwitches++;
  				enqueueProcess(&readyQueue[2], CPUS[i]);
- 				CPUS[i] == NULL;
+ 				CPUS[i] = NULL;
  			}
  			else if(CPUS[i]->bursts[CPUS[i]->currentBurst].step != CPUS[i]->bursts[CPUS[i]->currentBurst].length 
  				&& CPUS[i]->priority == 2){
@@ -315,7 +310,7 @@ void runningToWaiting(void){
  					CPUS[i]->quantumRemaining = 0;
  					totalContextSwitches++;
  					enqueueProcess(&readyQueue[2], CPUS[i]);
- 					CPUS[i] == NULL;
+ 					CPUS[i] = NULL;
  				}
  				else{
  					CPUS[i]->bursts[CPUS[i]->currentBurst].step++;
@@ -334,12 +329,33 @@ void runningToWaiting(void){
  				}
  				CPUS[i] = NULL;
  			}
+ 		}
+ 		else{
+ 			if(readyQueueSize1 != 0){
+ 				Process *grabNext = readyQueue[0].front->data;
+ 				dequeueProcess(&readyQueue[0]);
+ 				CPUS[i] = grabNext;
+ 				CPUS[i]->bursts[CPUS[i]->currentBurst].step++;
+ 				CPUS[i]->quantumRemaining++;
+			}
+			else if(readyQueueSize2 != 0){
+ 				Process *grabNext = readyQueue[1].front->data;
+ 				dequeueProcess(&readyQueue[1]);
+ 				CPUS[i] = grabNext;
+ 				CPUS[i]->bursts[CPUS[i]->currentBurst].step++;
+ 				CPUS[i]->quantumRemaining++;
+ 			}
+ 			else if(readyQueueSize3 != 0){
+ 				Process *grabNext = readyQueue[2].front->data;
+ 				dequeueProcess(&readyQueue[2]);
+ 				CPUS[i] = grabNext;
+ 				CPUS[i]->bursts[CPUS[i]->currentBurst].step++;
+ 				CPUS[i]->quantumRemaining = 0;
+ 			}
+ 			else{
+ 				cpuTimeUtilized++;
+ 			}
  		}	
- 	}
- 	// sort preemptive processes by process ID's and enqueue in the ready queue
- 	qsort(preemptive, num, sizeof(Process*), compareProcessIds);
- 	for (j = 0; j < num; j++){
- 		enqueueProcess(&readyQueue[currentLevel], preemptive[j]);
  	}
  }
  /**
