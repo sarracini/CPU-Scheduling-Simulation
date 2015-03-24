@@ -175,9 +175,8 @@ int runningProcesses(void){
 	return runningProcesses;
 }
 /**
- * Grabs the next scheduled process in the queue (first process currently at
- * the front of the ready queue). Increments the waiting time in order to update
- * the ready state. Returns the next process to be run
+ * Dispatcher. Will grab the next appropriate process to be run
+ * based on the availability in their ready queues.
  */
 Process *nextScheduledProcess(void){
 	int readyQueueSize1 = readyQueue[0].size;
@@ -208,23 +207,20 @@ void addNewIncomingProcess(void){
 		tmpQueue[tmpQueueSize] = &processes[nextProcess];
 		tmpQueueSize++;
 		nextProcess++;
-		printf("add incoming\n");
 	}
 }
 /**
  * Get the first process in the waiting queue, check if their I/O burst is complete.
  * If the current I/O burst is complete, move on to next I/O burst and add the process
  * to the "pre-ready queue". Dequeue the waiting queue and update waiting state by 
- * incrementing the current burst's step
+ * incrementing the current burst's step. Assign priority to 0, and time quantum to 0.
  */
 void waitingToReady(void){
  	int i;
  	int waitingQueueSize = waitingQueue.size;
  	for(i = 0; i < waitingQueueSize; i++){
- 		printf("waiting to ready\n");
  		Process *grabNext = waitingQueue.front->data;
  		grabNext->priority = 0;
- 		//grabNext->quantumRemaining = timeQuantums[0];
  		grabNext->quantumRemaining = 0;
  		dequeueProcess(&waitingQueue);
  		if(grabNext->bursts[grabNext->currentBurst].step == grabNext->bursts[grabNext->currentBurst].length){
@@ -251,19 +247,17 @@ void readyToRunning(void){
  	}
 	tmpQueueSize = 0;
  	for (i = 0; i < NUMBER_OF_PROCESSORS; i++){
- 		printf("ready to running\n");
+ 		printf("");
  		if (CPUS[i] == NULL){
  			CPUS[i] = nextScheduledProcess();
  		}
  	}
- 	printf("finished ready to running\n");
  }
 /**
- * If a currently running process has finished their CPU burst, move them to the waiting queue 
- * and terminate those who have finished their CPU burst. Start the process' next I/O burst. If 
- * CPU burst is not finished, move the process to the waiting queue and free the current CPU. 
- * If the CPU burst is finished, terminate the process by setting the end time to the current 
- * simulation time. Alternatively, the time slice expires before the current burst is over.
+ * Check all cases; first that the first time slice hasn't expired, if it has then move
+ * process to the second level. Run the process on that level, if the time slice expires
+ * then move it to the fcfs part of the algorithm. There it will operate as a regular fcfs
+ * algorithm, processing each process in a first come first serve manner.
  */
 void runningToWaiting(void){
 	int readyQueueSize1 = readyQueue[0].size;
@@ -273,12 +267,10 @@ void runningToWaiting(void){
  	
  	for (i = 0; i < NUMBER_OF_PROCESSORS; i++){
  		if (CPUS[i] != NULL){
- 			printf("running to waiting \n");
  			if (CPUS[i]->bursts[CPUS[i]->currentBurst].step != CPUS[i]->bursts[CPUS[i]->currentBurst].length 
  				&& CPUS[i]->quantumRemaining != timeQuantums[0] && CPUS[i]->priority == 0){
  				CPUS[i]->quantumRemaining++;
  				CPUS[i]->bursts[CPUS[i]->currentBurst].step++;
- 				printf("1\n");
  			}
  			else if(CPUS[i]->bursts[CPUS[i]->currentBurst].step != CPUS[i]->bursts[CPUS[i]->currentBurst].length 
  				&& CPUS[i]->quantumRemaining == timeQuantums[0] && CPUS[i]->priority == 0){
@@ -287,7 +279,6 @@ void runningToWaiting(void){
  				totalContextSwitches++;
  				enqueueProcess(&readyQueue[1], CPUS[i]);
  				CPUS[i] = NULL;
- 				printf("2\n");
  			}
  			else if(CPUS[i]->bursts[CPUS[i]->currentBurst].step != CPUS[i]->bursts[CPUS[i]->currentBurst].length 
  				&& CPUS[i]->quantumRemaining != timeQuantums[1] && CPUS[i]->priority == 1){
@@ -296,14 +287,11 @@ void runningToWaiting(void){
  					totalContextSwitches++;
  					enqueueProcess(&readyQueue[1], CPUS[i]);
  					CPUS[i] = NULL;
- 					printf("3.25\n");
  				}
  				else{
  					CPUS[i]->bursts[CPUS[i]->currentBurst].step++;
  					CPUS[i]->quantumRemaining++;
- 					printf("3.5\n");
  				}
- 				printf("3\n");
  			}
  			else if(CPUS[i]->bursts[CPUS[i]->currentBurst].step != CPUS[i]->bursts[CPUS[i]->currentBurst].length 
  				&& CPUS[i]->quantumRemaining == timeQuantums[1] && CPUS[i]->priority == 1){
@@ -312,7 +300,6 @@ void runningToWaiting(void){
  				totalContextSwitches++;
  				enqueueProcess(&readyQueue[2], CPUS[i]);
  				CPUS[i] = NULL;
- 				printf("4\n");
  			}
  			else if(CPUS[i]->bursts[CPUS[i]->currentBurst].step != CPUS[i]->bursts[CPUS[i]->currentBurst].length 
  				&& CPUS[i]->priority == 2){
@@ -321,15 +308,12 @@ void runningToWaiting(void){
  					totalContextSwitches++;
  					enqueueProcess(&readyQueue[2], CPUS[i]);
  					CPUS[i] = NULL;
- 					printf("5.25\n");
  				}
  				else{
  					CPUS[i]->bursts[CPUS[i]->currentBurst].step++;
- 					printf("5.5\n");
  				}
- 				printf("5\n");
  			}
- 			// fix this part - fcfs part of the algorithm
+ 			// fcfs part of the algorithm
  			else if (CPUS[i]->bursts[CPUS[i]->currentBurst].step == CPUS[i]->bursts[CPUS[i]->currentBurst].length){
  				CPUS[i]->currentBurst++;
  				CPUS[i]->quantumRemaining = 0;
@@ -342,9 +326,8 @@ void runningToWaiting(void){
  				}
  				CPUS[i] = NULL;
  			}
- 			printf("6\n");
  		}
- 		// if the CPU is free
+ 		// if the CPU is free, assign it work
  		else if (CPUS[i] == NULL){
  			if(readyQueueSize1 != 0){
  				Process *grabNext = readyQueue[0].front->data;
@@ -352,7 +335,6 @@ void runningToWaiting(void){
  				CPUS[i] = grabNext;
  				CPUS[i]->bursts[CPUS[i]->currentBurst].step++;
  				CPUS[i]->quantumRemaining++;
- 				printf("7\n");
 			}
 			else if(readyQueueSize2 != 0){
  				Process *grabNext = readyQueue[1].front->data;
@@ -360,7 +342,6 @@ void runningToWaiting(void){
  				CPUS[i] = grabNext;
  				CPUS[i]->bursts[CPUS[i]->currentBurst].step++;
  				CPUS[i]->quantumRemaining++;
- 				printf("8\n");
  			}
  			else if(readyQueueSize3 != 0){
  				Process *grabNext = readyQueue[2].front->data;
@@ -368,7 +349,6 @@ void runningToWaiting(void){
  				CPUS[i] = grabNext;
  				CPUS[i]->bursts[CPUS[i]->currentBurst].step++;
  				CPUS[i]->quantumRemaining = 0;
- 				printf("9\n");
  			}
  		}	
  	}
@@ -395,14 +375,6 @@ void runningToWaiting(void){
  			enqueueProcess(&readyQueue[i], grabNext);
  		}
  	}
- 	// update CPU's
- 	/*for (i = 0; i < NUMBER_OF_PROCESSORS; i++){
- 		if(CPUS[i] != NULL){
- 			CPUS[i]->bursts[CPUS[i]->currentBurst].step++;
- 			CPUS[i]->quantumRemaining--;
- 		}
- 	}*/
- 		printf("10\n");
  }
 /**
  * Display results for average waiting time, average turnaround time, the time
