@@ -346,7 +346,7 @@ int main(int argc, char *argv[]){
 		}
 	}
 	
-	qsort(processes, numberOfProcesses, sizeof(Process*), compareArrivalTime);
+	qsort(processes, numberOfProcesses, sizeof(Process), compareArrivalTime);
 
 	// main execution loop
 	while (numberOfProcesses){

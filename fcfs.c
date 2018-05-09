@@ -313,7 +313,7 @@ int main(){
 		}
 	}
 
-	qsort(processes, numberOfProcesses, sizeof(Process*), compareArrivalTime);
+	qsort(processes, numberOfProcesses, sizeof(Process), compareArrivalTime);
 
 	// main execution loop
 	while (numberOfProcesses){
